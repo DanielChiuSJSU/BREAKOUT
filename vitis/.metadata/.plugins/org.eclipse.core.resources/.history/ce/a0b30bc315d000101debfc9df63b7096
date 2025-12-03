@@ -1,0 +1,16 @@
+#include "profiler.h"
+
+const double us_per_count = 1000000.0 / COUNTS_PER_SECOND;
+
+//stores the current cycle count from PMU into start
+void profiler_start(profiler_s *profiler){
+	XTime_GetTime(&(profiler->start));
+}
+
+//stores the current cycle count from PMU into end
+//also calculates elapsed microseconds (elapsed_us)
+void profiler_end(profiler_s *profiler){
+	XTime_GetTime(&(profiler->end));
+	profiler->time_diff = profiler->end - profiler->start;
+	profiler->elapsed_us =
+}

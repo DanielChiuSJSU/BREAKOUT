@@ -1,0 +1,16 @@
+#ifndef PROFILER_H
+#define PROFILER_H
+
+#include "xtime_l.h"
+
+typedef struct {
+	XTime start;
+	xTime end;
+	XTime time_diff;
+	u32 elapsed_us;
+} profiler_s;
+
+void profiler_start(profiler_s*);
+void profiler_end(profiler_s*);
+
+#endif //PROFILER_H

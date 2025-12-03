@@ -1,0 +1,12 @@
+#include "profiler.h"
+
+//stores the current cycle count from PMU into start
+void profiler_start(profiler_s *profiler){
+
+}
+
+//stores the current cycle count from PMU into end
+//also calculates elapsed microseconds (elapsed_us)
+void profiler_end(profiler_s *profiler){
+
+}

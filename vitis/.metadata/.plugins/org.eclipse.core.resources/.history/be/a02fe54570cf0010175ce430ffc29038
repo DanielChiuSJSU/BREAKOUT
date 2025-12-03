@@ -1,0 +1,7 @@
+#include "renderer.h"
+
+#include <stdio.h>
+
+void renderer_initialize(){
+	xil_printf("Initializing Renderer\n\r");)
+}

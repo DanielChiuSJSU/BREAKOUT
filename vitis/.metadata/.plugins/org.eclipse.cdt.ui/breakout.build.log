@@ -1,0 +1,25 @@
+11:31:17 **** Incremental Build of configuration Debug for project breakout ****
+make all 
+make --no-print-directory pre-build
+a9-linaro-pre-build-step
+' '
+make --no-print-directory main-build
+'Building file: ../src/renderer.c'
+'Invoking: ARM v7 gcc compiler'
+arm-none-eabi-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/renderer.o" -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard -IC:/Users/il0ve/CMPE_240/BREAKOUT/vitis/breakout_wrapper/export/breakout_wrapper/sw/breakout_wrapper/standalone_ps7_cortexa9_0/bspinclude/include -MMD -MP -MF"src/renderer.d" -MT"src/renderer.o" -o "src/renderer.o" "../src/renderer.c"
+'Finished building: ../src/renderer.c'
+' '
+'Building target: breakout.elf'
+'Invoking: ARM v7 gcc linker'
+arm-none-eabi-gcc -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard -Wl,-build-id=none -specs=Xilinx.spec -Wl,-T -Wl,../src/lscript.ld -LC:/Users/il0ve/CMPE_240/BREAKOUT/vitis/breakout_wrapper/export/breakout_wrapper/sw/breakout_wrapper/standalone_ps7_cortexa9_0/bsplib/lib -o "breakout.elf"  ./src/dynclk/dynclk.o  ./src/display_ctrl/display_ctrl.o  ./src/main.o ./src/platform.o ./src/profiler.o ./src/renderer.o   -Wl,--start-group,-lxil,-lgcc,-lc,--end-group
+'Finished building target: breakout.elf'
+' '
+'Invoking: ARM v7 Print Size'
+arm-none-eabi-size breakout.elf  |tee "breakout.elf.size"
+   text	   data	    bss	    dec	    hex	filename
+  86759	   2700	24909008	24998467	17d7243	breakout.elf
+'Finished building: breakout.elf.size'
+' '
+
+11:31:18 Build Finished (took 1s.513ms)
+

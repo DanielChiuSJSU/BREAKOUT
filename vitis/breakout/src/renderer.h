@@ -1,0 +1,14 @@
+#ifndef RENDERER_H
+#define RENDERER_H
+
+#define RENDERER_MAX_FRAME (1920*1080*3)
+#define RENDERER_STRIDE (1920*3)
+
+/*
+ * Expose only the necessary API in the header
+ */
+void renderer_initialize();
+void renderer_oscillate_test();
+void renderer_moving_box_test();
+
+#endif /* RENDERER_H */

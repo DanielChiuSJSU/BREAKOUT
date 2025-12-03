@@ -1,0 +1,7 @@
+#ifndef RENDERER_H
+#define RENDERER_H
+
+// current target is 540p
+#define RENDERER_MAX_FRAME (960*540*3)
+
+#endif /* RENDERER_H */
