@@ -165,7 +165,7 @@ void renderer_render(){
 	memset(current_frame, 0, RENDERER_MAX_FRAME * sizeof(u8));
 }
 
-void renderer_draw_pixel(uint x, uint y, u8 r, u8 g, u8 b){
+void renderer_draw_pixel(u32 x, u32 y, u8 r, u8 g, u8 b){
 	u32 pixel_address;
 	u8 *frame = pFrames[current_frame_index];
 
@@ -183,6 +183,9 @@ void renderer_draw_pixel(uint x, uint y, u8 r, u8 g, u8 b){
 	frame[pixel_address+1] = b;
 	frame[pixel_address+2] = g;
 }
+
+volatile unsigned int value;
+volatile unsigned int buttons;
 
 void renderer_moving_box_test(){
 	static int box_x = 0;
@@ -202,6 +205,10 @@ void renderer_moving_box_test(){
 	long int frame_counter = 0;
 	int debug_update_interval = 3; //interval between profiler prints in seconds
 
+//	value = *(unsigned int*)0x43c00000;
+	value = *(unsigned int*)0xFFFFFFFF;
+	buttons = (value & 0b11110000) >> 4;
+
 	printf("Launching moving box test\n\r");
 
 	while (TRUE){
@@ -210,6 +217,12 @@ void renderer_moving_box_test(){
 		profiler_start(&profiler[0]);
 
 		profiler_start(&profiler[1]);
+
+		if (buttons & 1){
+			r = 0;
+			g = 255;
+			b = 0;
+		}
 
 		//update box movement
 		box_x = (box_x + 5) % window_w;
@@ -242,7 +255,7 @@ void renderer_moving_box_test(){
 			printf("box update time: %lu us\n\r", profiler[1].elapsed_us);
 			printf("box drawing time: %lu us\n\r", profiler[2].elapsed_us);
 			printf("rendering time: %lu us\n\r", profiler[3].elapsed_us);
-			printf("total time: %lu us\n\r",
+			printf("Total Time: %lu us\n\r",
 					profiler[1].elapsed_us + profiler[2].elapsed_us + profiler[3].elapsed_us);
 			printf("\n\r");
 		}
