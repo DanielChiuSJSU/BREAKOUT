@@ -43,6 +43,9 @@
  *   uartns550   9600
  *   uartlite    Configurable only in HW design
  *   ps7_uart    115200 (configured by bootrom/bsp)
+ *
+ * For a good tutorial on how to do the bootloader:
+ * https://www.youtube.com/watch?v=benVn87eAuU
  */
 
 #include <stdio.h>
@@ -55,6 +58,7 @@
 #include "sleep.h"
 
 #include "renderer.h"
+#include "breakout_game.h"
 
 //microseconds per count (1 second = 1,000,000 microseconds)
 //COUNTS_PER_SECOND is 333,333,343 so us_per_count is around .003
@@ -117,8 +121,13 @@ int main() {
 //    xil_printf("Running Timer Test\n\r");
 //    timer_test();
 
-    xil_printf("Running Renderer Test\n\r");
-    renderer_test();
+//    xil_printf("Running Renderer Test\n\r");
+//    renderer_test();
+
+    xil_printf("Initializing Renderer\n\r");
+    renderer_initialize();
+    xil_printf("\n\rRunning Breakout\n\r");
+    breakout_game_run();
 
     xil_printf("\n\r");
 

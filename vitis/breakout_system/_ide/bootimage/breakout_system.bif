@@ -1,0 +1,12 @@
+/* C:/Users/il0ve/AppData/Local/Temp/bootgen_breakout_system1318818369994338943/sd_card_temp/boot.bif */
+/* Command to create bitstream .bin file:       */
+/*   bootgen -image <bif_file> -split bin -w    */
+/* Command to create BOOT.BIN file:             */
+/*   bootgen  -image <bif_file> -w -o i BOOT.BIN */
+/*breakout_wrapper*/
+the_ROM_image:
+{
+ [bootloader] C:/Users/il0ve/CMPE_240/BREAKOUT/vitis/breakout_wrapper/export/breakout_wrapper/sw/breakout_wrapper/boot/fsbl.elf
+ C:/Users/il0ve/CMPE_240/BREAKOUT/vitis/breakout/_ide/bitstream/hdmi_w_4portbtn.bit
+ C:/Users/il0ve/CMPE_240/BREAKOUT/vitis/breakout/Debug/breakout.elf
+}

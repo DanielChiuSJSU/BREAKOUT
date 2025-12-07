@@ -1,12 +1,25 @@
+#include "breakout_game.h"
+
+/*
+ * IMPORTANT: To get math functions to work, you must link them in the project build settings.
+ * 1. Right-Click "breakout" application project and go to properties
+ * 2. In the left panel, go to C/C++ Build -> Settings
+ * 3. In the Tool Settings tab, select ARM gcc linker -> Libraries
+ * 4. In Libraries (-l), add "m" to link the math library
+ *
+ * More info: https://adaptivesupport.amd.com/s/article/52971?language=en_US
+ */
+#include <math.h>
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <unistd.h>
+//#include <unistd.h>
 
 #include "xil_printf.h"
 #include "xtime_l.h"
+#include "sleep.h"
 
 // ============================================================================
 // INCLUDE RENDERER HEADERS
@@ -17,8 +30,8 @@
 // ============================================================================
 // CONSTANTS AND DEFINES
 // ============================================================================
-#define SCREEN_WIDTH  (dispCtrl.vMode.width)
-#define SCREEN_HEIGHT (dispCtrl.vMode.height)
+#define SCREEN_WIDTH  1920
+#define SCREEN_HEIGHT 1080
 
 #define FPS           60
 #define FRAME_DELAY_US (1000000 / FPS) // in microseconds
@@ -30,7 +43,7 @@
 #define PADDLE_Y       (SCREEN_HEIGHT - 40)
 
 #define BALL_RADIUS    7
-#define BALL_SPEED     4
+#define BALL_SPEED     6
 
 #define BRICK_WIDTH    75
 #define BRICK_HEIGHT   15
@@ -39,6 +52,9 @@
 #define BRICK_PADDING  5
 
 #define MAX_LIVES      3
+
+#define WALL_WIDTH     480
+#define MAX_ANGLE      (45 * M_PI / 180.0)  // in radians
 
 // Color format: RGB (8-bit each)
 #define COLOR_BLACK_R  0
@@ -93,6 +109,9 @@ typedef struct {
 // ============================================================================
 // INITIALIZATION FUNCTIONS
 // ============================================================================
+
+profiler_s profiler_breakout[10];
+
 void init_game(GameState *game) {
     // Initialize paddle
     game->paddle.x  = SCREEN_WIDTH / 2 - PADDLE_WIDTH / 2;
@@ -107,12 +126,14 @@ void init_game(GameState *game) {
 
     // Initialize bricks
     int brick_index = 0;
+    int brick_offset = (BRICK_WIDTH + BRICK_PADDING) * BRICK_COLS - BRICK_PADDING;
+    brick_offset = SCREEN_WIDTH / 2 - brick_offset / 2 - BRICK_PADDING;
     for (int row = 0; row < BRICK_ROWS; row++) {
         for (int col = 0; col < BRICK_COLS; col++) {
             game->bricks[brick_index].x     =
-                col * (BRICK_WIDTH + BRICK_PADDING) + BRICK_PADDING;
+                brick_offset + col * (BRICK_WIDTH + BRICK_PADDING) + BRICK_PADDING;
             game->bricks[brick_index].y     =
-                row * (BRICK_HEIGHT + BRICK_PADDING) + 20;
+                row * (BRICK_HEIGHT + BRICK_PADDING) + 60;
             game->bricks[brick_index].alive = 1;
             brick_index++;
         }
@@ -129,19 +150,20 @@ void init_game(GameState *game) {
 // INPUT HANDLING
 // ============================================================================
 void handle_input_zynq(GameState *game) {
-    // TODO: Read from GPIO push-buttons on Zynq
-    // For now, use simulated input
-    static int demo_direction = 1;
-    static int frame_count    = 0;
+	volatile static unsigned int buttons;
+	buttons = *(unsigned int*)0x41210000;
 
-    frame_count++;
+	game->paddle.vx = 0;
+	if (buttons & 0b1000)
+		game->paddle.vx = -PADDLE_SPEED;
+	else if (buttons & 0b0001)
+		game->paddle.vx = PADDLE_SPEED;
 
-    // Auto-move paddle for demo
-    if (frame_count % 30 == 0) {
-        demo_direction = -demo_direction;
-    }
-
-    game->paddle.vx = demo_direction * PADDLE_SPEED * 0.5f;
+	if (!game->ball_launched && (buttons & 0b0110)){
+		game->ball_launched = TRUE;
+		game->ball.vx = 0;
+		game->ball.vy = -BALL_SPEED;
+	}
 }
 
 // ============================================================================
@@ -164,9 +186,10 @@ int check_circle_rect_collision(float cx, float cy, float r,
 
     float dx   = cx - closest_x;
     float dy   = cy - closest_y;
-    float dist = sqrt(dx * dx + dy * dy);
+    return dx*dx + dy*dy < r*r;
+//    float dist = sqrt(dx * dx + dy * dy);
+//    return dist < r;
 
-    return dist < r;
 }
 
 // ============================================================================
@@ -189,10 +212,10 @@ void update_game(GameState *game) {
     game->paddle.x += game->paddle.vx;
 
     // Keep paddle in bounds
-    if (game->paddle.x < 0)
-        game->paddle.x = 0;
-    if (game->paddle.x + PADDLE_WIDTH > SCREEN_WIDTH)
-        game->paddle.x = SCREEN_WIDTH - PADDLE_WIDTH;
+    if (game->paddle.x < WALL_WIDTH)
+        game->paddle.x = WALL_WIDTH;
+    if (game->paddle.x + PADDLE_WIDTH >= SCREEN_WIDTH - WALL_WIDTH)
+        game->paddle.x = SCREEN_WIDTH - WALL_WIDTH - PADDLE_WIDTH - 1;
 
     // If ball not launched, keep it on paddle
     if (!game->ball_launched) {
@@ -206,12 +229,12 @@ void update_game(GameState *game) {
     game->ball.y += game->ball.vy;
 
     // Ball collision with walls
-    if (game->ball.x - BALL_RADIUS < 0) {
-        game->ball.x  = BALL_RADIUS;
+    if (game->ball.x - BALL_RADIUS < WALL_WIDTH) {
+        game->ball.x  = BALL_RADIUS + WALL_WIDTH;
         game->ball.vx = -game->ball.vx;
     }
-    if (game->ball.x + BALL_RADIUS > SCREEN_WIDTH) {
-        game->ball.x  = SCREEN_WIDTH - BALL_RADIUS;
+    if (game->ball.x + BALL_RADIUS >= SCREEN_WIDTH - WALL_WIDTH) {
+        game->ball.x  = SCREEN_WIDTH - WALL_WIDTH - BALL_RADIUS - 1;
         game->ball.vx = -game->ball.vx;
     }
     if (game->ball.y - BALL_RADIUS < 0) {
@@ -223,12 +246,30 @@ void update_game(GameState *game) {
     if (check_circle_rect_collision(game->ball.x, game->ball.y, BALL_RADIUS,
                                     game->paddle.x, game->paddle.y,
                                     PADDLE_WIDTH, PADDLE_HEIGHT)) {
-        game->ball.y  = game->paddle.y - BALL_RADIUS - 5;
-        game->ball.vy = -game->ball.vy;
+    	float vx = game->ball.vx;
+    	float vy = game->ball.vy;
+    	float spd = sqrt(vx*vx + vy*vy);
 
-        if (game->paddle.vx != 0) {
-            game->ball.vx = game->paddle.vx * 0.8f;
-        }
+        game->ball.y  = game->paddle.y - BALL_RADIUS - 5;
+//        game->ball.vy = -game->ball.vy;
+
+
+        //get x offset between ball center and paddle center
+        int offset = game->ball.x - (game->paddle.x + PADDLE_WIDTH/2);
+        float magnitude = 1.0 * offset / (PADDLE_WIDTH/2);
+        if (magnitude > 1.0) magnitude = 1.0;
+        if (magnitude < -1.0) magnitude = -1.0;
+        printf("ball offset = %d, magnitude = %f\n\r", offset, magnitude);
+
+        //range will be [-MAX_ANGLE, MAX_ANGLE]
+        float angle = MAX_ANGLE * magnitude;
+        game->ball.vy = -spd * cos(angle);
+        game->ball.vx = spd * sin(angle);
+
+
+//        if (game->paddle.vx != 0) {
+//            game->ball.vx = game->paddle.vx * 0.8f;
+//        }
     }
 
     // Ball collision with bricks
@@ -298,9 +339,17 @@ void draw_filled_circle(int cx, int cy, int radius, u8 r, u8 g, u8 b) {
 // RENDERING TO HDMI
 // ============================================================================
 void render_game_hdmi(GameState *game) {
-    // Clear screen to black by drawing a black rectangle
-    draw_rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
-              COLOR_BLACK_R, COLOR_BLACK_G, COLOR_BLACK_B);
+    // Screen is already cleared to grey from render_render() call
+	// Draw the black void in between the walls
+	for (int y = 0; y < SCREEN_HEIGHT; y++){
+		renderer_draw_grey_row(
+				WALL_WIDTH + 1,
+				y,
+				SCREEN_WIDTH - (WALL_WIDTH * 2) - 2,
+				0
+		);
+	}
+
 
     // Draw paddle (cyan)
     draw_rect((int)game->paddle.x, (int)game->paddle.y,
@@ -319,6 +368,11 @@ void render_game_hdmi(GameState *game) {
                       BRICK_WIDTH, BRICK_HEIGHT,
                       COLOR_RED_R, COLOR_RED_G, COLOR_RED_B);
         }
+    }
+
+    //draw lives display (cyan)
+    for (int i = 0; i < game->lives; i++){
+    	draw_rect(WALL_WIDTH + 10 + (20 + 10) * i, 10, 20, 20, 0, 255, 255);
     }
 
     // Print game state to UART for debugging
@@ -345,49 +399,49 @@ void breakout_game_run() {
     int  debug_update_interval = 3; // Print debug every 3 seconds
 
     while (game.game_running) {
-        profiler_start(&profiler[0]);
+        profiler_start(&profiler_breakout[0]);
 
         // Input handling
-        profiler_start(&profiler[1]);
+        profiler_start(&profiler_breakout[1]);
         handle_input_zynq(&game);
-        profiler_end(&profiler[1]);
+        profiler_end(&profiler_breakout[1]);
 
         // Game update
-        profiler_start(&profiler[2]);
+        profiler_start(&profiler_breakout[2]);
         update_game(&game);
-        profiler_end(&profiler[2]);
+        profiler_end(&profiler_breakout[2]);
 
         // Render to HDMI
-        profiler_start(&profiler[3]);
+        profiler_start(&profiler_breakout[3]);
         render_game_hdmi(&game);
-        profiler_end(&profiler[3]);
+        profiler_end(&profiler_breakout[3]);
 
         // Push frame to display
-        profiler_start(&profiler[4]);
-        renderer_render();
-        profiler_end(&profiler[4]);
+        profiler_start(&profiler_breakout[4]);
+        renderer_render(100);
+        profiler_end(&profiler_breakout[4]);
 
         // Debug profiler prints
         frame_counter++;
         if (frame_counter % (FPS * debug_update_interval) == 0) {
             xil_printf("Frame: %lu\n\r", frame_counter);
-            xil_printf("Input time: %lu us\n\r",   profiler[1].elapsed_us);
-            xil_printf("Update time: %lu us\n\r",  profiler[2].elapsed_us);
-            xil_printf("Render time: %lu us\n\r",  profiler[3].elapsed_us);
-            xil_printf("Display time: %lu us\n\r", profiler[4].elapsed_us);
+            xil_printf("Input time: %lu us\n\r",   profiler_breakout[1].elapsed_us);
+            xil_printf("Update time: %lu us\n\r",  profiler_breakout[2].elapsed_us);
+            xil_printf("Render time: %lu us\n\r",  profiler_breakout[3].elapsed_us);
+            xil_printf("Display time: %lu us\n\r", profiler_breakout[4].elapsed_us);
             xil_printf("Total time: %lu us\n\r",
-                       profiler[1].elapsed_us +
-                       profiler[2].elapsed_us +
-                       profiler[3].elapsed_us +
-                       profiler[4].elapsed_us);
+                       profiler_breakout[1].elapsed_us +
+                       profiler_breakout[2].elapsed_us +
+                       profiler_breakout[3].elapsed_us +
+                       profiler_breakout[4].elapsed_us);
             xil_printf("\n\r");
         }
 
-        profiler_end(&profiler[0]);
+        profiler_end(&profiler_breakout[0]);
 
         // Frame rate capping
-        if (profiler[0].elapsed_us < FRAME_DELAY_US) {
-            usleep(FRAME_DELAY_US - profiler[0].elapsed_us);
+        if (profiler_breakout[0].elapsed_us < FRAME_DELAY_US) {
+            usleep(FRAME_DELAY_US - profiler_breakout[0].elapsed_us);
         }
     }
 
@@ -399,7 +453,7 @@ void breakout_game_run() {
 // ============================================================================
 // MAIN ENTRY POINT (for Vitis SDK)
 // ============================================================================
-int main() {
+int main2() {
     xil_printf("==============================================\n\r");
     xil_printf("Zynq Breakout Game - HDMI Output\n\r");
     xil_printf("==============================================\n\r\n\r");

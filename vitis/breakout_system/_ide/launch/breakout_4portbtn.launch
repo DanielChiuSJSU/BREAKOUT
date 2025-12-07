@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <launchConfiguration type="com.xilinx.sdx.system.debug.launch.SdxMultiLaunchDelegate">
+    <booleanAttribute key="aie_event_trace.configuration.enabled" value="false"/>
+    <listAttribute key="aie_event_trace.configurations"/>
+    <stringAttribute key="aie_event_trace.debug_ip_layout_file" value=""/>
+    <booleanAttribute key="aie_event_trace.enabled" value="false"/>
+    <stringAttribute key="aie_event_trace.metadata_file" value=""/>
+    <stringAttribute key="aie_event_trace.trace_address" value="0x8F0000000"/>
+    <stringAttribute key="aie_event_trace.trace_depth" value="0x80000"/>
+    <booleanAttribute key="aie_event_trace.xrt_flow" value="false"/>
     <booleanAttribute key="com.xilinx.sdk.tcf.debug.ui.breakpoint.main" value="true"/>
     <stringAttribute key="com.xilinx.sdk.tcf.debug.ui.exec.script" value="false"/>
     <stringAttribute key="com.xilinx.sdk.tcf.debug.ui.exec.script.location" value=""/>
@@ -13,7 +21,7 @@
     <stringAttribute key="com.xilinx.sdk.tcf.debug.uidebug.type" value="STANDALONE_DEBUG"/>
     <booleanAttribute key="com.xilinx.sdk.tcf.debug.uienable.crosstrigger" value="false"/>
     <stringAttribute key="com.xilinx.sdk.tcf.debug.uifpga.device" value="Auto Detect"/>
-    <stringAttribute key="com.xilinx.sdk.tcf.debug.uihw.bit.file" value="${project_loc:breakout}/_ide/bitstream/design_1_wrapper.bit"/>
+    <stringAttribute key="com.xilinx.sdk.tcf.debug.uihw.bit.file" value="${project_loc:breakout}/_ide/bitstream/hdmi_w_4portbtn.bit"/>
     <stringAttribute key="com.xilinx.sdk.tcf.debug.uihw.init.tcl" value="${project_loc:breakout}/_ide/psinit/ps7_init.tcl"/>
     <booleanAttribute key="com.xilinx.sdk.tcf.debug.uipl.powerup" value="false"/>
     <stringAttribute key="com.xilinx.sdk.tcf.debug.uiproc.appl.map" value="{&quot;ps7_cortexa9_1&quot;:{&quot;xilinx.tcf.application&quot;:&quot;&quot;,&quot;xilinx.tcf.datafiles&quot;:&quot;&quot;,&quot;xilinx.tcf.no_download&quot;:true,&quot;xilinx.tcf.profile_enabled&quot;:false,&quot;xilinx.tcf.profile_frequency&quot;:&quot;10000&quot;,&quot;xilinx.tcf.profile_non_int_frequency&quot;:&quot;100000000&quot;,&quot;xilinx.tcf.profile_non_int_high_addr&quot;:&quot;&quot;,&quot;xilinx.tcf.profile_non_int_low_addr&quot;:&quot;&quot;,&quot;xilinx.tcf.profile_non_int_use_count_instr&quot;:false,&quot;xilinx.tcf.profile_non_int_use_cumulate&quot;:false,&quot;xilinx.tcf.profile_non_intrusive_support&quot;:false,&quot;xilinx.tcf.profile_store_address&quot;:&quot;0x0&quot;,&quot;xilinx.tcf.profile_use_intrusive&quot;:false,&quot;xilinx.tcf.project&quot;:&quot;&quot;,&quot;xilinx.tcf.relocate&quot;:false,&quot;xilinx.tcf.relocate_addr&quot;:&quot;&quot;,&quot;xilinx.tcf.reset&quot;:true,&quot;xilinx.tcf.stop_at_entry&quot;:false},&quot;ps7_cortexa9_0&quot;:{&quot;xilinx.tcf.application&quot;:&quot;Debug/breakout.elf&quot;,&quot;xilinx.tcf.datafiles&quot;:&quot;&quot;,&quot;xilinx.tcf.no_download&quot;:false,&quot;xilinx.tcf.profile_enabled&quot;:false,&quot;xilinx.tcf.profile_frequency&quot;:&quot;10000&quot;,&quot;xilinx.tcf.profile_non_int_frequency&quot;:&quot;100000000&quot;,&quot;xilinx.tcf.profile_non_int_high_addr&quot;:&quot;&quot;,&quot;xilinx.tcf.profile_non_int_low_addr&quot;:&quot;&quot;,&quot;xilinx.tcf.profile_non_int_use_count_instr&quot;:false,&quot;xilinx.tcf.profile_non_int_use_cumulate&quot;:false,&quot;xilinx.tcf.profile_non_intrusive_support&quot;:false,&quot;xilinx.tcf.profile_store_address&quot;:&quot;0x0&quot;,&quot;xilinx.tcf.profile_use_intrusive&quot;:false,&quot;xilinx.tcf.project&quot;:&quot;breakout&quot;,&quot;xilinx.tcf.relocate&quot;:false,&quot;xilinx.tcf.relocate_addr&quot;:&quot;&quot;,&quot;xilinx.tcf.reset&quot;:true,&quot;xilinx.tcf.stop_at_entry&quot;:false}}"/>
@@ -69,6 +77,12 @@
     <stringAttribute key="multilaunch.selected_apps" value=""/>
     <stringAttribute key="multilaunch.standalone_peer_id" value="Local"/>
     <stringAttribute key="org.eclipse.cdt.launch.PROJECT_ATTR" value="breakout_system"/>
+    <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
+        <listEntry value="/breakout_system"/>
+    </listAttribute>
+    <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
+        <listEntry value="4"/>
+    </listAttribute>
     <booleanAttribute key="org.eclipse.tcf.debug.AttachChildren" value="true"/>
     <booleanAttribute key="org.eclipse.tcf.debug.DisconnectOnCtxExit" value="false"/>
     <booleanAttribute key="org.eclipse.tcf.debug.StopAtEntry" value="false"/>
@@ -79,4 +93,23 @@
     <stringAttribute key="profile.enable" value="true"/>
     <stringAttribute key="profile.mode" value="default"/>
     <stringAttribute key="profile.stall.trace" value="off"/>
+    <stringAttribute key="profile_options.aie_event_trace" value="false"/>
+    <stringAttribute key="profile_options.aie_event_trace_level" value="functions"/>
+    <stringAttribute key="profile_options.aie_profile" value="false"/>
+    <stringAttribute key="profile_options.aie_profile_core_metrics" value="heat_map"/>
+    <stringAttribute key="profile_options.aie_profile_memory_metrics" value="dma_locks"/>
+    <stringAttribute key="profile_options.aie_trace_buffer_size" value="1"/>
+    <stringAttribute key="profile_options.aie_trace_buffer_units" value="M"/>
+    <stringAttribute key="profile_options.continuous_trace" value="false"/>
+    <stringAttribute key="profile_options.continuous_trace_interval" value="10"/>
+    <stringAttribute key="profile_options.data_transfer_trace" value="coarse"/>
+    <stringAttribute key="profile_options.dpu_profile" value="false"/>
+    <stringAttribute key="profile_options.lop_trace" value="false"/>
+    <stringAttribute key="profile_options.opencl_summary" value="true"/>
+    <stringAttribute key="profile_options.opencl_trace" value="false"/>
+    <stringAttribute key="profile_options.power_profile" value="false"/>
+    <stringAttribute key="profile_options.profile_interval" value="1000"/>
+    <stringAttribute key="profile_options.stall_trace" value="off"/>
+    <stringAttribute key="profile_options.trace_buffer_size" value="1"/>
+    <stringAttribute key="profile_options.xrt_Trace" value="false"/>
 </launchConfiguration>

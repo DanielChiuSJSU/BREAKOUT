@@ -1,6 +1,11 @@
+/*
+ * Some parts of this code is adapted from Digilent's video_demo.c
+ */
+
 #include "renderer.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "xil_cache.h"
 #include "sleep.h"
 #include "xtime_l.h"
@@ -25,7 +30,7 @@
 
 DisplayCtrl dispCtrl;
 XAxiVdma vdma;
-profiler_s profiler[10];
+profiler_s profiler_renderer[10];
 
 //Framebuffers for video data
 u8 frameBuf[DISPLAY_NUM_FRAMES][RENDERER_MAX_FRAME] __attribute__((aligned(0x20)));
@@ -41,6 +46,11 @@ int current_frame_index;
 
 void DemoPrintTest(u8 *frame, u32 width, u32 height, u32 stride, int pattern);
 
+/*
+ * Most of this code is borrowed from Digilent's video_demo.c
+ * Some of the initializing steps (video capture, interrupts) are skipped
+ *
+ */
 void renderer_initialize(){
 	int Status;
 	XAxiVdma_Config *vdmaConfig;
@@ -92,20 +102,20 @@ void renderer_initialize(){
 	//Skip the Video Capture
 	//Skip Callback Setup
 
-	xil_printf("Printing Test Pattern 1 to current frame\n\r");
-
-	profiler_start(&profiler[0]);
-
-	DemoPrintTest(
-		dispCtrl.framePtr[dispCtrl.curFrame],
-		dispCtrl.vMode.width,
-		dispCtrl.vMode.height,
-		dispCtrl.stride,
-		DEMO_PATTERN_1
-	);
-
-	profiler_end(&profiler[0]);
-	printf("DemoPrintTest time elapsed us: %lu\n\r", profiler[0].elapsed_us);
+//	xil_printf("Printing Test Pattern 1 to current frame\n\r");
+//
+//	profiler_start(&profiler_renderer[0]);
+//
+//	DemoPrintTest(
+//		dispCtrl.framePtr[dispCtrl.curFrame],
+//		dispCtrl.vMode.width,
+//		dispCtrl.vMode.height,
+//		dispCtrl.stride,
+//		DEMO_PATTERN_1
+//	);
+//
+//	profiler_end(&profiler_renderer[0]);
+//	printf("DemoPrintTest time elapsed us: %lu\n\r", profiler_renderer[0].elapsed_us);
 
 	//initialize current frame index to the frame after Display Control's current frame
 	current_frame_index = dispCtrl.curFrame + 1;
@@ -113,6 +123,57 @@ void renderer_initialize(){
 		current_frame_index = 1;
 
 	xil_printf("Initialization Complete!\n\r\n\r");
+}
+
+void renderer_draw_pixel(u32 x, u32 y, u8 r, u8 g, u8 b){
+	u32 pixel_address;
+	u8 *frame = pFrames[current_frame_index];
+
+	/*
+	 * - frame is a ONE-DIMENSIONAL array that contains RENDER_MAX_FRAME (1920*1080*3) bytes
+	 * - the first RENDERER_STRIDE (1920*3) bytes in frame is the first row of the screen
+	 * - if the video width is less than 1920, the first row will still be RENDERER_STRIDE bytes long
+	 *   - for example: if the video width is 1280 pixels, the first (1280*3) bytes
+	 *     will act like normal, but the bytes from (1280*3)+1 to (1920*3)
+	 *     will still exist but be unused
+	 */
+
+	pixel_address = (x * 3) + (RENDERER_STRIDE * y);
+	frame[pixel_address] = b;
+	frame[pixel_address+1] = g;
+	frame[pixel_address+2] = r;
+}
+
+//much faster than drawing each pixel individually but the color must be greyscale
+void renderer_draw_grey_row(u32 x, u32 y, u32 width, u8 grey){
+	u8 *frame = pFrames[current_frame_index];
+	memset(frame + x*3 + RENDERER_STRIDE*y, grey, 3*width*sizeof(u8));
+}
+
+/*
+ * 1. Flushes the cache for the current frame causing the dirty pixels to be written to the VDMA
+ * 2. Sets Display Control's frame to current frame
+ * 3. Advances the current frame to the next one
+ * 4. Clears the new current frame by setting every pixel to a greyscale color
+ */
+void renderer_render(u8 grey){
+	u8 *current_frame;
+
+	current_frame = pFrames[current_frame_index];
+
+	//flush the cache which somehow writes to the DMA
+	Xil_DCacheFlushRange((unsigned int)current_frame, RENDERER_MAX_FRAME);
+	//advance Display Controller to current frame
+	DisplayChangeFrame(&dispCtrl, current_frame_index);
+
+	//advance current frame to next one
+	++current_frame_index;
+	if (current_frame_index == DISPLAY_NUM_FRAMES)
+		current_frame_index = 1;
+
+	//wipe the new current frame by setting all pixels to the same greyscale color
+	current_frame = pFrames[current_frame_index];
+	memset(current_frame, grey, RENDERER_MAX_FRAME * sizeof(u8));
 }
 
 void renderer_oscillate_test(){
@@ -139,51 +200,6 @@ void renderer_oscillate_test(){
 	}
 }
 
-/*
- * 1. Flushes the cache for the current frame causing the dirty pixels to be written to the VDMA
- * 2. Sets Display Control's frame to current frame
- * 3. Advances the current frame to the next one
- * 4. Clears the new current frame (set every pixel to black)
- */
-void renderer_render(){
-	u8 *current_frame;
-
-	current_frame = pFrames[current_frame_index];
-
-	//flush the cache which somehow writes to the DMA
-	Xil_DCacheFlushRange((unsigned int)current_frame, RENDERER_MAX_FRAME);
-	//advance Display Controller to current frame
-	DisplayChangeFrame(&dispCtrl, current_frame_index);
-
-	//advance current frame to next one
-	++current_frame_index;
-	if (current_frame_index == DISPLAY_NUM_FRAMES)
-		current_frame_index = 1;
-
-	//wipe the new current frame
-	current_frame = pFrames[current_frame_index];
-	memset(current_frame, 0, RENDERER_MAX_FRAME * sizeof(u8));
-}
-
-void renderer_draw_pixel(u32 x, u32 y, u8 r, u8 g, u8 b){
-	u32 pixel_address;
-	u8 *frame = pFrames[current_frame_index];
-
-	/*
-	 * - frame is a ONE-DIMENSIONAL array that contains RENDER_MAX_FRAME (1920*1080*3) bytes
-	 * - the first RENDERER_STRIDE (1920*3) bytes in frame is the first row of the screen
-	 * - if the video width is less than 1920, the first row will still be RENDERER_STRIDE bytes long
-	 *   - for example: if the video width is 1280 pixels, the first (1280*3) bytes
-	 *     will act like normal, but the bytes from (1280*3)+1 to (1920*3)
-	 *     will still exist but be unused
-	 */
-
-	pixel_address = (x * 3) + (RENDERER_STRIDE * y);
-	frame[pixel_address] = r;
-	frame[pixel_address+1] = b;
-	frame[pixel_address+2] = g;
-}
-
 volatile unsigned int value;
 volatile unsigned int buttons;
 
@@ -192,45 +208,56 @@ void renderer_moving_box_test(){
 	static int box_y = 0;
 	static int box_w = 20;
 	static int box_h = 20;
+	static int box_vx = 5;
+	static int box_vy = 10;
 
 	int framerate = 60;
 
 	int window_w = dispCtrl.vMode.width;
 	int window_h = dispCtrl.vMode.height;
 
-	u8 r = 255;
+	u8 r = 0;
 	u8 g = 255;
-	u8 b = 255;
+	u8 b = 0;
 
 	long int frame_counter = 0;
-	int debug_update_interval = 3; //interval between profiler prints in seconds
-
-//	value = *(unsigned int*)0x43c00000;
-	value = *(unsigned int*)0xFFFFFFFF;
-	buttons = (value & 0b11110000) >> 4;
+	int debug_update_interval = 1; //interval between profiler prints in seconds
 
 	printf("Launching moving box test\n\r");
 
 	while (TRUE){
 		//TODO: add separate profilers for the different stages
 		//and print them out occasionally in the terminal
-		profiler_start(&profiler[0]);
+		profiler_start(&profiler_renderer[0]);
 
-		profiler_start(&profiler[1]);
+		profiler_start(&profiler_renderer[1]);
 
-		if (buttons & 1){
-			r = 0;
-			g = 255;
-			b = 0;
-		}
+
+		value = *(unsigned int*)0x41210000;
+//		value = *(unsigned int*)0xFFFFFFFF;
+		buttons = value & 0b1111;
+
+		if (buttons & 0b1000) box_vx = -abs(box_vx);
+		if (buttons & 0b0100) box_vx = abs(box_vx);
+		if (buttons & 0b0010) box_vy = -abs(box_vy);
+		if (buttons & 0b0001) box_vy = abs(box_vy);
 
 		//update box movement
-		box_x = (box_x + 5) % window_w;
-		box_y = (box_y + 10) % window_h;
+		box_x += box_vx;
+		if (box_x < 0)
+			box_x += window_w;
+		else if (box_x >= window_w)
+			box_x -= window_w;
 
-		profiler_end(&profiler[1]);
+		box_y += box_vy;
+		if (box_y < 0)
+			box_y += window_h;
+		else if (box_y >= window_h)
+			box_y -= window_h;
 
-		profiler_start(&profiler[2]);
+		profiler_end(&profiler_renderer[1]);
+
+		profiler_start(&profiler_renderer[2]);
 
 		//draw the box
 		for (int xi = box_x; xi <= box_x + box_w; ++xi){
@@ -239,36 +266,47 @@ void renderer_moving_box_test(){
 			}
 		}
 
-		profiler_end(&profiler[2]);
+		profiler_end(&profiler_renderer[2]);
 
-		profiler_start(&profiler[3]);
+		profiler_start(&profiler_renderer[3]);
 
 		//push the current frame to the display and advance frame
-		renderer_render();
+		renderer_render(0);
 
-		profiler_end(&profiler[3]);
+		profiler_end(&profiler_renderer[3]);
 
 		//debug profiler prints
+
 		++frame_counter;
+
 		if (frame_counter % (framerate * debug_update_interval) == 0){
 			printf("current frame: %lu\n\r", frame_counter);
-			printf("box update time: %lu us\n\r", profiler[1].elapsed_us);
-			printf("box drawing time: %lu us\n\r", profiler[2].elapsed_us);
-			printf("rendering time: %lu us\n\r", profiler[3].elapsed_us);
+			printf("box update time: %lu us\n\r", profiler_renderer[1].elapsed_us);
+			printf("box drawing time: %lu us\n\r", profiler_renderer[2].elapsed_us);
+			printf("rendering time: %lu us\n\r", profiler_renderer[3].elapsed_us);
 			printf("Total Time: %lu us\n\r",
-					profiler[1].elapsed_us + profiler[2].elapsed_us + profiler[3].elapsed_us);
+					profiler_renderer[1].elapsed_us +
+					profiler_renderer[2].elapsed_us +
+					profiler_renderer[3].elapsed_us);
+			printf("VALUE: %u\n\r", value);
+			printf("BUTTONS: %u\n\r", buttons);
+			printf("box_x: %d, box_y: %d\n\r", box_x, box_y);
 			printf("\n\r");
+
 		}
 
 
-		profiler_end(&profiler[0]);
+		profiler_end(&profiler_renderer[0]);
 
 		//if execution time is less than 1/framerate, delay for the remainder of time
-		if (profiler[0].elapsed_us < 1000000/framerate)
-			usleep(1000000/framerate - profiler[0].elapsed_us);
+		if (profiler_renderer[0].elapsed_us < 1000000/framerate)
+			usleep(1000000/framerate - profiler_renderer[0].elapsed_us);
 	}
 }
 
+/*
+ * Copied from Digilent's video_demo.c
+ */
 void DemoPrintTest(u8 *frame, u32 width, u32 height, u32 stride, int pattern)
 {
 	u32 xcoi, ycoi;
@@ -431,10 +469,10 @@ void DemoPrintTest(u8 *frame, u32 width, u32 height, u32 stride, int pattern)
 		 * Flush the framebuffer memory range to ensure changes are written to the
 		 * actual memory, and therefore accessible by the VDMA.
 		 */
-		profiler_start(&profiler[1]);
+		profiler_start(&profiler_renderer[1]);
 		Xil_DCacheFlushRange((unsigned int) frame, RENDERER_MAX_FRAME);
-		profiler_end(&profiler[1]);
-		printf("cache flush time: %lu\n\r", profiler[1].elapsed_us);
+		profiler_end(&profiler_renderer[1]);
+		printf("cache flush time: %lu\n\r", profiler_renderer[1].elapsed_us);
 		break;
 	default :
 		xil_printf("Error: invalid pattern passed to DemoPrintTest");
